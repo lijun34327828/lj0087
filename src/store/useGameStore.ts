@@ -44,6 +44,7 @@ interface GameState {
   setIsLoading: (loading: boolean) => void;
   getCurrentLevel: () => Level | undefined;
   saveHistory: () => void;
+  computeComparison: () => void;
 }
 
 const DEFAULT_AMOUNT = 50;
@@ -85,6 +86,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       workbenchItems: [...workbenchItems, { ingredientId, amount: DEFAULT_AMOUNT }],
     });
+    get().computeComparison();
   },
 
   updateAmount: (ingredientId, amount) => {
@@ -95,6 +97,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         item.ingredientId === ingredientId ? { ...item, amount: safeAmount } : item,
       ),
     }));
+    get().computeComparison();
   },
 
   removeIngredient: (ingredientId) => {
@@ -104,6 +107,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         (item) => item.ingredientId !== ingredientId,
       ),
     }));
+    get().computeComparison();
   },
 
   undo: () => {
@@ -112,11 +116,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     const newHistory = [...history];
     const prev = newHistory.pop()!;
     set({ workbenchItems: prev.items, history: newHistory });
+    get().computeComparison();
   },
 
   clearWorkbench: () => {
     get().saveHistory();
     set({ workbenchItems: [] });
+    get().computeComparison();
   },
 
   setComparison: (comparison) => set({ comparison }),
@@ -137,5 +143,72 @@ export const useGameStore = create<GameState>((set, get) => ({
   getCurrentLevel: () => {
     const { levels, currentLevelId } = get();
     return levels.find((l) => l.id === currentLevelId);
+  },
+
+  computeComparison: () => {
+    const { workbenchItems, getCurrentLevel, ingredients } = get();
+    const level = getCurrentLevel();
+
+    if (!level || workbenchItems.length === 0) {
+      set({ comparison: [] });
+      return;
+    }
+
+    const standardRecipeMap = new Map(level.recipe.map((r) => [r.ingredientId, r.amount]));
+    const playerItemsMap = new Map(workbenchItems.map((i) => [i.ingredientId, i.amount]));
+    const allIngredientIds = new Set([
+      ...standardRecipeMap.keys(),
+      ...playerItemsMap.keys(),
+    ]);
+
+    const comparison: ComparisonItem[] = [];
+
+    for (const ingredientId of allIngredientIds) {
+      const ingredient = ingredients.find((i) => i.id === ingredientId);
+      const ingredientName = ingredient?.name || ingredientId;
+      const expected = standardRecipeMap.get(ingredientId) ?? null;
+      const actual = playerItemsMap.get(ingredientId) ?? null;
+
+      if (expected !== null && actual === null) {
+        comparison.push({
+          ingredientId,
+          ingredientName,
+          expected,
+          actual,
+          status: 'missing',
+        });
+      } else if (expected === null && actual !== null) {
+        comparison.push({
+          ingredientId,
+          ingredientName,
+          expected,
+          actual,
+          status: 'extra',
+          diff: actual,
+        });
+      } else if (expected !== null && actual !== null) {
+        if (expected === actual) {
+          comparison.push({
+            ingredientId,
+            ingredientName,
+            expected,
+            actual,
+            status: 'correct',
+          });
+        } else {
+          const diff = actual - expected;
+          comparison.push({
+            ingredientId,
+            ingredientName,
+            expected,
+            actual,
+            status: 'incorrect',
+            diff,
+          });
+        }
+      }
+    }
+
+    set({ comparison });
   },
 }));
