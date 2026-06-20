@@ -1,7 +1,8 @@
-import { Undo2, Trash2, CheckCircle2 } from 'lucide-react';
+import { useEffect } from 'react';
+import { Undo2, Trash2, CheckCircle2, Timer } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import WorkbenchItem from './WorkbenchItem';
-import { validateSubmission } from '@/services/api';
+import { validateSubmission, submitTimedRecord } from '@/services/api';
 
 export default function Workbench() {
   const {
@@ -19,7 +20,34 @@ export default function Workbench() {
     markLevelPassed,
     setIsLoading,
     isLoading,
+    gameMode,
+    timeLeft,
+    isTimerRunning,
+    decrementTime,
+    startTimer,
+    stopTimer,
+    resetTimer,
+    getElapsedTime,
+    updateTimedRecord,
   } = useGameStore();
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (gameMode === 'timed' && isTimerRunning) {
+      interval = setInterval(() => {
+        decrementTime();
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [gameMode, isTimerRunning, decrementTime]);
+
+  useEffect(() => {
+    if (gameMode === 'timed') {
+      resetTimer();
+    }
+  }, [currentLevelId, gameMode, resetTimer]);
 
   const getIngredient = (id: string) => ingredients.find((i) => i.id === id);
 
@@ -32,6 +60,9 @@ export default function Workbench() {
     e.preventDefault();
     const ingredientId = e.dataTransfer.getData('ingredientId');
     if (ingredientId) {
+      if (gameMode === 'timed' && !isTimerRunning) {
+        startTimer();
+      }
       addIngredient(ingredientId);
     }
   };
@@ -50,6 +81,16 @@ export default function Workbench() {
       setComparison(result.comparison);
       setLastValidationErrors(result.errors);
       if (result.success) {
+        if (gameMode === 'timed') {
+          stopTimer();
+          const elapsed = getElapsedTime();
+          try {
+            await submitTimedRecord(currentLevelId, elapsed);
+            updateTimedRecord(currentLevelId, elapsed);
+          } catch (err) {
+            console.error('提交限时记录失败:', err);
+          }
+        }
         markLevelPassed(currentLevelId);
         setShowSuccessModal(true);
       } else {
@@ -64,8 +105,36 @@ export default function Workbench() {
 
   const canSubmit = workbenchItems.length > 0 && !isLoading;
 
+  const isLast10Seconds = gameMode === 'timed' && timeLeft <= 10 && timeLeft > 0;
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="bg-gradient-to-br from-white to-sky-50 rounded-3xl p-6 shadow-xl border-2 border-sky-200">
+      {gameMode === 'timed' && (
+        <div className="mb-4 text-center">
+          <div
+            className={`inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-bold ${
+              isLast10Seconds
+                ? 'bg-red-100 text-red-600 animate-pulse'
+                : 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-600'
+            }`}
+          >
+            <Timer size={32} className={isLast10Seconds ? 'animate-bounce' : ''} />
+            <span className="text-5xl font-mono tracking-wider">
+              {formatTime(timeLeft)}
+            </span>
+          </div>
+          {!isTimerRunning && timeLeft > 0 && (
+            <p className="text-sm text-slate-500 mt-2">添加原料后开始计时</p>
+          )}
+        </div>
+      )}
+
       <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
         <span className="text-2xl">🥤</span>
         调配操作台

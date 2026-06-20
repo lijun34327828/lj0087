@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function IngredientCard({ ingredient }: Props) {
-  const { addIngredient, workbenchItems } = useGameStore();
+  const { addIngredient, workbenchItems, gameMode, isTimerRunning, startTimer } = useGameStore();
   const isAdded = workbenchItems.some((i) => i.ingredientId === ingredient.id);
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -16,6 +16,9 @@ export default function IngredientCard({ ingredient }: Props) {
 
   const handleClick = () => {
     if (!isAdded) {
+      if (gameMode === 'timed' && !isTimerRunning) {
+        startTimer();
+      }
       addIngredient(ingredient.id);
     }
   };

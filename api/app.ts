@@ -13,6 +13,7 @@ import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import levelsRoutes from './routes/levels.js'
 import validateRoutes from './routes/validate.js'
+import timedRoutes from './routes/timed.js'
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -32,6 +33,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
  */
 app.use('/api/levels', levelsRoutes)
 app.use('/api/validate', validateRoutes)
+app.use('/api/timed', timedRoutes)
 
 /**
  * health

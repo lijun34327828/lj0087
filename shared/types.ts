@@ -47,3 +47,18 @@ export interface ValidationResult {
   errors: ValidationError[];
   comparison: ComparisonItem[];
 }
+
+export interface TimedModeRecord {
+  levelId: number;
+  bestTime: number | null;
+}
+
+export interface TimedModeSubmitRequest {
+  levelId: number;
+  time: number;
+}
+
+export interface TimedModeRecordsResponse {
+  success: boolean;
+  records: TimedModeRecord[];
+}

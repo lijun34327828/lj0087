@@ -3,6 +3,7 @@ import type {
   Level,
   PlayerSubmission,
   ValidationResult,
+  TimedModeRecord,
 } from '../../shared/types';
 
 const API_BASE = '/api';
@@ -42,4 +43,31 @@ export async function validateSubmission(
     throw new Error(data.error || '校验失败');
   }
   return data.data;
+}
+
+export async function fetchTimedRecords(): Promise<TimedModeRecord[]> {
+  const response = await fetch(`${API_BASE}/timed`);
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || '获取限时记录失败');
+  }
+  return data.records;
+}
+
+export async function submitTimedRecord(
+  levelId: number,
+  time: number,
+): Promise<TimedModeRecord> {
+  const response = await fetch(`${API_BASE}/timed/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ levelId, time }),
+  });
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || '提交限时记录失败');
+  }
+  return data.record;
 }

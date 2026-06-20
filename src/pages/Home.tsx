@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useGameStore } from '@/store/useGameStore';
-import { fetchLevels } from '@/services/api';
+import { fetchLevels, fetchTimedRecords } from '@/services/api';
 import LevelHeader from '@/components/LevelHeader';
 import StandardRecipe from '@/components/StandardRecipe';
 import IngredientShelf from '@/components/IngredientShelf';
@@ -10,7 +10,7 @@ import Modal from '@/components/Modal';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
-  const { setLevels, setIngredients, isLoading, setIsLoading } = useGameStore();
+  const { setLevels, setIngredients, isLoading, setIsLoading, setTimedRecords } = useGameStore();
 
   useEffect(() => {
     const loadData = async () => {
@@ -19,6 +19,12 @@ export default function Home() {
         const { levels, ingredients } = await fetchLevels();
         setLevels(levels);
         setIngredients(ingredients);
+        try {
+          const records = await fetchTimedRecords();
+          setTimedRecords(records);
+        } catch (err) {
+          console.error('加载限时记录失败:', err);
+        }
       } catch (err) {
         console.error('加载数据失败:', err);
       } finally {
@@ -26,7 +32,7 @@ export default function Home() {
       }
     };
     loadData();
-  }, [setLevels, setIngredients, setIsLoading]);
+  }, [setLevels, setIngredients, setIsLoading, setTimedRecords]);
 
   if (isLoading) {
     return (
@@ -69,6 +75,7 @@ export default function Home() {
 
       <Modal type="error" />
       <Modal type="success" />
+      <Modal type="timedFail" />
     </div>
   );
 }
